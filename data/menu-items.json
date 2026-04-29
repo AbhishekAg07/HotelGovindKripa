@@ -1,0 +1,34 @@
+[
+  {
+    "id": "menu-1",
+    "createdAt": "2026-04-28T00:00:00.000Z",
+    "name": "Paneer Butter Masala",
+    "category": "veg",
+    "description": "Rich tomato gravy with soft paneer cubes and warm spices.",
+    "price": 135
+  },
+  {
+    "id": "menu-2",
+    "createdAt": "2026-04-28T00:00:00.000Z",
+    "name": "Dal Tadka",
+    "category": "veg",
+    "description": "Slow-cooked lentils finished with garlic, cumin, and ghee.",
+    "price": 120
+  },
+  {
+    "id": "menu-3",
+    "createdAt": "2026-04-28T00:00:00.000Z",
+    "name": "Chicken Curry",
+    "category": "nonveg",
+    "description": "Classic home-style curry with tender chicken and bold masala.",
+    "price": 140
+  },
+  {
+    "id": "menu-4",
+    "createdAt": "2026-04-28T00:00:00.000Z",
+    "name": "Chicken Biryani",
+    "category": "nonveg",
+    "description": "Fragrant basmati rice layered with spices and slow-cooked chicken.",
+    "price": 240
+  }
+]
