@@ -98,17 +98,11 @@ const requestHandler = async (req, res) => {
       };
 
       await storage.addBooking(record);
-      const emailResult = await sendBookingEmail(record);
-      if (!emailResult.ok) {
-        return sendJson(res, 202, {
-          ok: true,
-          message: "Booking received. Email notification is not configured, so please also call us directly at +91 83184 88047."
-        });
-      }
+      sendBookingEmail(record);
 
       return sendJson(res, 201, {
         ok: true,
-        message: "Booking sent successfully. We will get back to you soon."
+        message: "Booking received. We will get back to you soon."
       });
     }
 
@@ -131,17 +125,11 @@ const requestHandler = async (req, res) => {
       };
 
       await storage.addInquiry(record);
-      const emailResult = await sendInquiryEmail(record);
-      if (!emailResult.ok) {
-        return sendJson(res, 202, {
-          ok: true,
-          message: "Inquiry received. Email notification is not configured, so please also call us directly at +91 83184 88047."
-        });
-      }
+      sendInquiryEmail(record);
 
       return sendJson(res, 201, {
         ok: true,
-        message: "Inquiry sent successfully. We will get back to you soon."
+        message: "Inquiry received. We will get back to you soon."
       });
     }
 
@@ -734,6 +722,9 @@ function createMailTransporter() {
     host: smtpConfig.host,
     port: smtpConfig.port,
     secure: smtpConfig.secure,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     auth: {
       user: smtpConfig.user,
       pass: smtpConfig.pass
