@@ -265,6 +265,37 @@ const requestHandler = async (req, res) => {
       return sendJson(res, 200, { ok: true, message: "Server is running.", storage: storage.name });
     }
 
+    if (req.method === "POST" && route === "/api/test-email") {
+      if (!consumeRateLimit(req, "admin", 120, 15 * 60 * 1000)) {
+        return sendJson(res, 429, { ok: false, message: "Too many requests. Please try again later." });
+      }
+
+      if (!isAdminRequest(req)) {
+        return sendJson(res, 401, { ok: false, message: "Unauthorized." });
+      }
+
+      const emailResult = await sendEmail(
+        "Test Email - Hotel Govind Kripa",
+        [
+          "This is a test email from the Hotel Govind Kripa website.",
+          "",
+          `Sent at: ${new Date().toISOString()}`
+        ].join("\n")
+      );
+
+      if (!emailResult.ok) {
+        return sendJson(res, 500, {
+          ok: false,
+          message: `Email test failed: ${emailResult.message || emailResult.reason}`
+        });
+      }
+
+      return sendJson(res, 200, {
+        ok: true,
+        message: `Test email sent to ${hotelEmail}.`
+      });
+    }
+
     serveStaticFile(route, res);
   } catch (error) {
     console.error(error);
@@ -793,7 +824,7 @@ async function sendEmail(subject, text, replyTo = smtpConfig.user) {
     return { ok: true };
   } catch (error) {
     console.error("Email delivery failed:", error.message);
-    return { ok: false, reason: "send_failed" };
+    return { ok: false, reason: "send_failed", message: error.message };
   }
 }
 

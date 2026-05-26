@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("admin-key-form").addEventListener("submit", handleAdminLogin);
   document.getElementById("menu-form").addEventListener("submit", handleMenuSubmit);
   document.getElementById("menu-cancel-btn").addEventListener("click", resetMenuForm);
+  document.getElementById("test-email-btn").addEventListener("click", handleTestEmail);
   document.getElementById("admin-menu-list").addEventListener("click", handleMenuListClick);
   document.getElementById("booking-list").addEventListener("click", handleBookingListClick);
   document.getElementById("inquiry-list").addEventListener("click", handleInquiryListClick);
@@ -52,6 +53,20 @@ async function refreshDashboard() {
   renderMenu(menuItems);
   renderBookings(bookings);
   renderInquiries(inquiries);
+}
+
+async function handleTestEmail() {
+  setStatus("email-test-status", "Sending test email...");
+
+  try {
+    const result = await fetchAdminJson("/api/test-email", getAdminKey(), {
+      method: "POST"
+    });
+
+    setStatus("email-test-status", result.message);
+  } catch (error) {
+    setStatus("email-test-status", error.message || "Could not send test email.");
+  }
 }
 
 async function handleMenuSubmit(event) {
