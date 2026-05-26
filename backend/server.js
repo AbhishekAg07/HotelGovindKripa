@@ -41,7 +41,7 @@ const smtpConfig = {
   port: Number(process.env.SMTP_PORT || 587),
   secure: String(process.env.SMTP_SECURE || "false").toLowerCase() === "true",
   user: process.env.SMTP_USER || "",
-  pass: process.env.SMTP_PASS || ""
+  pass: String(process.env.SMTP_PASS || "").replace(/\s+/g, "")
 };
 
 const contentTypes = {
@@ -715,10 +715,11 @@ function createId(prefix) {
 
 function createMailTransporter() {
   if (!nodemailer || !smtpConfig.host || !smtpConfig.user || !smtpConfig.pass) {
+    console.warn("Email transporter is not configured. Check SMTP_HOST, SMTP_USER, and SMTP_PASS.");
     return null;
   }
 
-  return nodemailer.createTransport({
+  const mailTransporter = nodemailer.createTransport({
     host: smtpConfig.host,
     port: smtpConfig.port,
     secure: smtpConfig.secure,
@@ -730,6 +731,17 @@ function createMailTransporter() {
       pass: smtpConfig.pass
     }
   });
+
+  mailTransporter.verify((error) => {
+    if (error) {
+      console.error("Email transporter verification failed:", error.message);
+      return;
+    }
+
+    console.log("Email transporter verified successfully.");
+  });
+
+  return mailTransporter;
 }
 
 async function sendBookingEmail(record) {
@@ -761,10 +773,10 @@ async function sendInquiryEmail(record) {
     `Created at: ${record.createdAt}`
   ].join("\n");
 
-  return sendEmail(subject, text);
+  return sendEmail(subject, text, record.email);
 }
 
-async function sendEmail(subject, text) {
+async function sendEmail(subject, text, replyTo = smtpConfig.user) {
   if (!transporter) {
     return { ok: false, reason: "not_configured" };
   }
@@ -773,13 +785,14 @@ async function sendEmail(subject, text) {
     await transporter.sendMail({
       from: smtpConfig.user,
       to: hotelEmail,
-      replyTo: smtpConfig.user,
+      replyTo,
       subject,
       text
     });
+    console.log(`Email notification sent: ${subject}`);
     return { ok: true };
   } catch (error) {
-    console.error("Email delivery failed:", error);
+    console.error("Email delivery failed:", error.message);
     return { ok: false, reason: "send_failed" };
   }
 }
