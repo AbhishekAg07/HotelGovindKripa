@@ -1,0 +1,16 @@
+{
+  "name": "hotel-govind-kripa-site",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "mongodb": "^6.20.0",
+    "nodemailer": "^8.0.7"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check api/index.js && node --check ../frontend/script.js && node --check ../frontend/admin.js"
+  }
+}

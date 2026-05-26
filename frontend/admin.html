@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin | Hotel Govind Kripa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-page">
+  <header class="site-header">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">
+        <img src="assets/hotel-logo.png" alt="Hotel Govind Kripa logo">
+      </span>
+      <span class="brand-copy">
+        <strong>HOTEL GOVIND KRIPA</strong>
+        <small>Admin Dashboard</small>
+      </span>
+    </a>
+    <nav class="site-nav">
+      <a href="index.html">Website</a>
+    </nav>
+  </header>
+
+  <main class="admin-shell">
+    <section class="section admin-login" id="login-section">
+      <div class="section-head">
+        <p class="eyebrow">Secure Access</p>
+        <h1>Manage bookings, inquiries, and restaurant menu.</h1>
+        <p>Enter the admin key configured on the server to open the dashboard.</p>
+      </div>
+
+      <form class="contact-form card admin-key-form" id="admin-key-form">
+        <input type="password" id="admin-key" placeholder="Admin key" autocomplete="current-password" required>
+        <button type="submit" class="primary-btn">Open Dashboard</button>
+        <p id="admin-status" class="form-status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="section admin-dashboard" id="dashboard-section" hidden>
+      <div class="section-head">
+        <p class="eyebrow">Dashboard</p>
+        <h1>Hotel Govind Kripa operations</h1>
+        <p>Review saved customer requests and keep the public menu updated.</p>
+      </div>
+
+      <div class="admin-layout">
+        <form class="contact-form card" id="menu-form">
+          <h2 id="menu-form-title">Add Menu Item</h2>
+          <input type="hidden" id="menu-id">
+          <input type="text" id="menu-name" placeholder="Dish name" required>
+          <select id="menu-category" required>
+            <option value="">Category</option>
+            <option value="veg">Veg</option>
+            <option value="nonveg">Non-Veg</option>
+          </select>
+          <input type="number" id="menu-price" placeholder="Price" min="0" step="1" required>
+          <textarea id="menu-description" placeholder="Short description" required></textarea>
+          <div class="admin-form-actions">
+            <button type="submit" class="primary-btn" id="menu-submit-btn">Add Item</button>
+            <button type="button" class="secondary-btn" id="menu-cancel-btn" hidden>Cancel</button>
+          </div>
+          <p id="menu-form-status" class="form-status" aria-live="polite"></p>
+        </form>
+
+        <div class="card admin-panel">
+          <h2>Current Menu</h2>
+          <div id="admin-menu-list" class="admin-list"></div>
+        </div>
+      </div>
+
+      <div class="admin-layout">
+        <div class="card admin-panel">
+          <h2>Bookings</h2>
+          <div id="booking-list" class="admin-list"></div>
+        </div>
+
+        <div class="card admin-panel">
+          <h2>Inquiries</h2>
+          <div id="inquiry-list" class="admin-list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

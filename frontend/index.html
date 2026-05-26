@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hotel Govind Kripa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a href="#home" class="brand">
+      <span class="brand-mark">
+        <img src="assets/hotel-logo.png" alt="Hotel Govind Kripa logo">
+      </span>
+      <span class="brand-copy">
+        <strong>HOTEL GOVIND KRIPA</strong>
+        <small>Hotel and Restaurant</small>
+      </span>
+    </a>
+
+    <nav class="site-nav">
+      <a href="#home">Home</a>
+      <a href="#menu">Dining</a>
+      <a href="#rooms">Rooms</a>
+      <a href="#location">Location</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="home" class="hero">
+      <div class="overlay"></div>
+      <div class="hero-shell">
+        <div class="hero-copy">
+          <p class="eyebrow">Welcome to Hotel Govind Kripa</p>
+          <h1>Comfortable stays and fresh dining, all in one place.</h1>
+          <p class="hero-text">
+            Hotel Govind Kripa and Restaurant offers warm hospitality, restful rooms,
+            and satisfying meals for family visits, business trips, and weekend stays.
+            Customers can also order food online through Zomato.
+          </p>
+          <div class="hero-actions">
+            <button type="button" class="primary-btn" data-scroll-target="rooms">Book Your Stay</button>
+            <a href="#menu" class="secondary-btn">See Menu</a>
+            <a href="https://www.zomato.com/kushinagar/hotel-govind-kripa-and-restaurant-kushinagar-locality/order/" target="_blank" rel="noopener noreferrer" class="secondary-btn">Order on Zomato</a>
+          </div>
+        </div>
+
+        <div class="hero-panel glass-panel">
+          <p class="panel-label">Quick booking</p>
+          <form id="booking-form" class="booking-form">
+            <div class="panel-grid booking-grid">
+              <label>
+                <span>Check-in</span>
+                <input type="date" id="checkin" name="checkin" required>
+              </label>
+              <label>
+                <span>Check-out</span>
+                <input type="date" id="checkout" name="checkout" required>
+              </label>
+              <label>
+                <span>Guests</span>
+                <select id="guests" name="guests" required>
+                  <option value="">Select</option>
+                  <option value="1">1 Guest</option>
+                  <option value="2">2 Guests</option>
+                  <option value="3">3 Guests</option>
+                  <option value="4">4 Guests</option>
+                </select>
+              </label>
+              <label>
+                <span>Room type</span>
+                <select id="roomType" name="roomType" required>
+                  <option value="">Choose</option>
+                  <option value="Non-AC Room - Rs 1500">Non-AC Room - Rs 1500</option>
+                  <option value="AC Room - Rs 2000">AC Room - Rs 2000</option>
+                </select>
+              </label>
+            </div>
+            <input type="text" id="bookingName" name="name" placeholder="Guest name" required>
+            <input type="tel" id="bookingPhone" name="phone" placeholder="10-digit phone number" pattern="[0-9]{10}" inputmode="numeric" maxlength="10" required>
+            <button type="submit" class="primary-btn booking-btn">Reserve Now</button>
+            <p id="booking-status" class="form-status" aria-live="polite"></p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="info-strip">
+      <div>
+        <strong>Family-friendly comfort</strong>
+        <span>Clean rooms, smooth check-in, and warm service</span>
+      </div>
+      <div>
+        <strong>Restaurant on site</strong>
+        <span>Fresh veg and non-veg dishes prepared daily, plus online ordering on Zomato</span>
+      </div>
+      <div>
+        <strong>Easy reservations</strong>
+        <span>Booking and inquiry requests saved instantly</span>
+      </div>
+    </section>
+
+    <section id="menu" class="section">
+      <div class="section-head">
+        <p class="eyebrow">Dining</p>
+        <h2>Taste what Hotel Govind Kripa serves best.</h2>
+        <p>Browse our latest restaurant menu, discover the dishes our guests enjoy most, or order online through Zomato.</p>
+      </div>
+
+      <div class="filters" aria-label="Menu filters">
+        <button type="button" class="filter-btn active" data-filter="all">All</button>
+        <button type="button" class="filter-btn" data-filter="veg">Veg</button>
+        <button type="button" class="filter-btn" data-filter="nonveg">Non-Veg</button>
+      </div>
+
+      <div id="menu-grid" class="grid menu-grid"></div>
+      <p class="menu-more">AND MANY MORE....</p>
+      <p id="menu-status" class="form-status" aria-live="polite"></p>
+    </section>
+
+    <section id="zomato" class="section">
+      <div class="zomato-card">
+        <div class="zomato-copy">
+          <span class="zomato-logo" aria-label="Zomato">zomato</span>
+          <p class="eyebrow">Online Ordering</p>
+          <h2>Order your favorite dishes from Hotel Govind Kripa on Zomato.</h2>
+          <p>You can enjoy our food at home too. Search for Hotel Govind Kripa on Zomato and place your order online anytime.</p>
+          <div class="zomato-actions">
+            <a href="https://www.zomato.com/kushinagar/hotel-govind-kripa-and-restaurant-kushinagar-locality/order/" target="_blank" rel="noopener noreferrer" class="zomato-btn">Open Zomato</a>
+          </div>
+        </div>
+        <div class="zomato-visual" aria-hidden="true">
+          <div class="zomato-badge">
+            <span class="zomato-badge-mark">Z</span>
+            <span class="zomato-badge-text">Fast online food delivery</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="rooms" class="section section-dark">
+      <div class="section-head">
+        <p class="eyebrow">Stay</p>
+        <h2>Rooms designed for relaxed travel.</h2>
+        <p>Our rooms are made to keep your stay simple, comfortable, and dependable.</p>
+      </div>
+
+      <div class="grid room-grid">
+        <article class="card room-card">
+          <p class="room-type">Non-AC Room</p>
+          <h3>Spacious and practical for everyday stays.</h3>
+          <p>A dependable room option for travelers who want comfort, privacy, and good value.</p>
+          <div class="room-meta">
+            <span>Wi-Fi</span>
+            <span>Room service</span>
+          </div>
+          <strong>Rs 1500</strong>
+          <button type="button" class="secondary-btn room-book-btn" data-book-room="Non-AC Room - Rs 1500">Book Now</button>
+        </article>
+        <article class="card room-card featured">
+          <p class="room-type">AC Room</p>
+          <h3>Comfort with cooling and convenience.</h3>
+          <p>Perfect for guests who want a more relaxed stay with air conditioning and essential amenities.</p>
+          <div class="room-meta">
+            <span>Smart TV</span>
+            <span>Wi-Fi</span>
+            <span>Room service</span>
+          </div>
+          <strong>Rs 2000</strong>
+          <button type="button" class="primary-btn room-book-btn" data-book-room="AC Room - Rs 2000">Book Now</button>
+        </article>
+      </div>
+    </section>
+
+    <section id="location" class="section">
+      <div class="section-head">
+        <p class="eyebrow">Location</p>
+        <h2>Find Hotel Govind Kripa easily.</h2>
+        <p>Visit us directly, open navigation in Google Maps, or use the live map below to check the location.</p>
+      </div>
+
+      <div class="location-layout">
+        <div class="location-card card">
+          <h3>Hotel Govind Kripa and Restaurant</h3>
+          <p>Gorakhpur-Kushinagar Rd, beside Kajaria Showroom, Kushinagar, Uttar Pradesh 274403, India, accessible via Google Maps navigation.</p>
+          <p>Call: +91 83184 88047</p>
+          <p>Email: hotelgovindkripa@gmail.com</p>
+          <p>Online food ordering available on Zomato.</p>
+          <a href="https://maps.app.goo.gl/6ipRioQ6few2ZPs77" target="_blank" rel="noopener noreferrer" class="map-link">Open in Google Maps</a>
+        </div>
+
+        <div class="map-card card">
+          <iframe
+            title="Hotel Govind Kripa Location"
+            src="https://www.google.com/maps?q=Hotel%20Govind%20Kripa%20and%20Restaurant&output=embed"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            allowfullscreen></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="section">
+      <div class="section-head">
+        <p class="eyebrow">Contact</p>
+        <h2>Reach Hotel Govind Kripa and Restaurant directly.</h2>
+        <p>Send your room inquiry or ask about food, timings, and availability.</p>
+      </div>
+
+      <div class="contact-layout">
+        <div class="contact-card card">
+          <h3>Need help with your booking?</h3>
+          <p>Send us your travel dates, room preference, or restaurant question and we will get back to you soon.</p>
+          <div class="contact-actions">
+            <a href="tel:+918318488047" class="quick-link">Call Now</a>
+            <a href="mailto:hotelgovindkripa@gmail.com" class="quick-link">Send Email</a>
+            <a href="https://wa.me/918318488047" class="quick-link">WhatsApp</a>
+            <a href="https://www.zomato.com/kushinagar/hotel-govind-kripa-and-restaurant-kushinagar-locality/order/" target="_blank" rel="noopener noreferrer" class="quick-link">Order on Zomato</a>
+          </div>
+        </div>
+
+        <form class="contact-form card" id="inquiry-form">
+          <input type="text" id="name" placeholder="Your name" required>
+          <input type="tel" id="phone" placeholder="10-digit phone number" pattern="[0-9]{10}" inputmode="numeric" maxlength="10" required>
+          <input type="email" id="email" placeholder="Email address" required>
+          <textarea id="message" placeholder="Tell us your travel dates, room preference, or restaurant query" required></textarea>
+          <button type="submit" class="primary-btn">Send Inquiry</button>
+          <p id="inquiry-status" class="form-status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <a href="https://wa.me/918318488047" class="whatsapp-float" aria-label="Chat on WhatsApp">WhatsApp</a>
+
+  
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Hotel Govind Kripa and Restaurant.</p>
+    <p>&#10084; Developed by: ABHISHEK AGARWAL</p>
+  </footer>
+  <script src="config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,11 +1,10 @@
 {
-  "name": "hotel-govind-kripa-site",
+  "name": "hotel-govind-kripa",
   "version": "1.0.0",
   "private": true,
-  "dependencies": {
-    "nodemailer": "^6.10.1"
-  },
   "scripts": {
-    "start": "node server.js"
+    "start": "npm --prefix backend start",
+    "check": "npm --prefix backend run check",
+    "postinstall": "npm --prefix backend install"
   }
 }

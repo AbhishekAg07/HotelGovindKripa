@@ -1,0 +1,9 @@
+node_modules/
+backend/node_modules/
+.env
+backend/.env
+backend/data/*.json
+!backend/data/.gitkeep
+*.log
+server.out.log
+server.err.log
