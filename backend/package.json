@@ -11,6 +11,6 @@
   },
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check api/index.js && node --check ../frontend/script.js && node --check ../frontend/admin.js"
+    "check": "node --check server.js && node --check ../frontend/script.js && node --check ../frontend/admin.js"
   }
 }

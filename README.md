@@ -48,17 +48,37 @@ Important variables:
 
 Without `MONGODB_URI`, local development uses JSON files in `backend/data/`. Do not use JSON fallback for production traffic.
 
-## Deploy Backend on Vercel
+## Deploy Frontend on Vercel
 
-Deploy only the `backend/` directory to Vercel.
+Deploy only the `frontend/` directory to Vercel.
+
+- Root directory: `frontend`
+- Framework preset: Other
+- Build command: leave empty
+- Output directory: `.`
+- Install command: leave empty
+
+Before deploying the frontend, set the Render backend URL in `frontend/config.js`:
+
+```js
+window.HOTEL_API_BASE = "https://your-render-backend.onrender.com";
+```
+
+After deployment, open:
+
+- Public site: `https://your-vercel-frontend.vercel.app/`
+- Admin dashboard: `https://your-vercel-frontend.vercel.app/admin.html`
+
+## Deploy Backend on Render
+
+Deploy only the `backend/` directory as a Render Web Service.
 
 - Root directory: `backend`
-- Framework preset: Other
-- Build command: leave empty or use `npm install`
-- Output directory: leave empty
-- Install command: `npm install`
+- Runtime: Node
+- Build command: `npm install`
+- Start command: `npm start`
 
-Set environment variables in Vercel from `backend/.env.example`, especially:
+Set environment variables in Render from `backend/.env.example`, especially:
 
 - `ADMIN_KEY`
 - `MONGODB_URI`
@@ -71,26 +91,12 @@ Set environment variables in Vercel from `backend/.env.example`, especially:
 - `SMTP_USER`
 - `SMTP_PASS`
 
-Use MongoDB Atlas or another MongoDB database in production. Vercel serverless functions do not provide persistent local file storage.
+Use MongoDB Atlas or another MongoDB database in production. Render can restart services, so MongoDB is safer than relying on local JSON files for production traffic.
 
 After deployment, test:
 
 ```text
-https://your-vercel-backend.vercel.app/api/health
+https://your-render-backend.onrender.com/api/health
 ```
 
-## Deploy Frontend on Render
-
-Deploy only the `frontend/` directory as a Render Static Site.
-
-- Root directory: `frontend`
-- Build command: leave empty
-- Publish directory: `.`
-
-Before deploying the frontend, set the Vercel backend URL in `frontend/config.js`:
-
-```js
-window.HOTEL_API_BASE = "https://your-vercel-backend.vercel.app";
-```
-
-After Render gives you the live frontend URL, add that exact URL to the backend `ALLOWED_ORIGINS` environment variable in Vercel, then redeploy the backend.
+After Vercel gives you the live frontend URL, add that exact URL to the backend `ALLOWED_ORIGINS` environment variable in Render, then redeploy the backend.
