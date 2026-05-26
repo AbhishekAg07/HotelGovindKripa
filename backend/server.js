@@ -40,6 +40,7 @@ const smtpConfig = {
   host: process.env.SMTP_HOST || "",
   port: Number(process.env.SMTP_PORT || 587),
   secure: String(process.env.SMTP_SECURE || "false").toLowerCase() === "true",
+  family: Number(process.env.SMTP_FAMILY || 4),
   user: process.env.SMTP_USER || "",
   pass: String(process.env.SMTP_PASS || "").replace(/\s+/g, "")
 };
@@ -754,6 +755,7 @@ function createMailTransporter() {
     host: smtpConfig.host,
     port: smtpConfig.port,
     secure: smtpConfig.secure,
+    family: smtpConfig.family,
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000,
