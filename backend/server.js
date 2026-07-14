@@ -30,6 +30,7 @@ const mongoUri = process.env.MONGODB_URI || "";
 const mongoDbName = process.env.MONGODB_DB_NAME || "hotel_govind_kripa";
 const allowedOrigins = parseAllowedOrigins(process.env.ALLOWED_ORIGINS || "");
 const maxBodyBytes = Number(process.env.MAX_BODY_BYTES || 100000);
+const maxBookingNights = Number(process.env.MAX_BOOKING_NIGHTS || 30);
 const rateLimitStore = new Map();
 const files = {
   bookings: path.join(dataDir, "bookings.json"),
@@ -577,6 +578,10 @@ function validateBooking(payload) {
     return { valid: false, message: "Guest name must be between 2 and 80 characters." };
   }
 
+  if (!isValidPersonName(payload.name)) {
+    return { valid: false, message: "Please enter a valid guest name using letters, spaces, apostrophes, periods, or hyphens." };
+  }
+
   if (!/^\d{10}$/.test(String(payload.phone).trim())) {
     return { valid: false, message: "Phone number must be exactly 10 digits." };
   }
@@ -593,13 +598,20 @@ function validateBooking(payload) {
     return { valid: false, message: "Booking dates must be valid." };
   }
 
+  const checkin = cleanText(payload.checkin);
+  const checkout = cleanText(payload.checkout);
   const today = getTodayDateString();
-  if (String(payload.checkin).trim() < today) {
+  if (checkin < today) {
     return { valid: false, message: "Check-in date cannot be before today." };
   }
 
-  if (payload.checkout <= payload.checkin) {
+  if (checkout <= checkin) {
     return { valid: false, message: "Check-out date must be after check-in date." };
+  }
+
+  const stayNights = getDateDeltaInDays(checkin, checkout);
+  if (stayNights > maxBookingNights) {
+    return { valid: false, message: `Bookings cannot be longer than ${maxBookingNights} nights.` };
   }
 
   return { valid: true };
@@ -616,6 +628,10 @@ function validateInquiry(payload) {
     return { valid: false, message: "Name must be between 2 and 80 characters." };
   }
 
+  if (!isValidPersonName(payload.name)) {
+    return { valid: false, message: "Please enter a valid name using letters, spaces, apostrophes, periods, or hyphens." };
+  }
+
   if (!/^\d{10}$/.test(String(payload.phone).trim())) {
     return { valid: false, message: "Phone number must be exactly 10 digits." };
   }
@@ -626,6 +642,10 @@ function validateInquiry(payload) {
 
   if (!isLengthBetween(payload.message, 10, 1000)) {
     return { valid: false, message: "Message must be between 10 and 1000 characters." };
+  }
+
+  if (hasUnsafeHtmlChars(payload.message)) {
+    return { valid: false, message: "Message cannot include HTML characters like <, >, or /." };
   }
 
   return { valid: true };
@@ -700,7 +720,7 @@ function isAdminRequest(req) {
 }
 
 function cleanText(value) {
-  return String(value || "").replace(/\s+/g, " ").trim();
+  return stripUnsafeHtmlChars(value).replace(/\s+/g, " ").trim();
 }
 
 function isLengthBetween(value, min, max) {
@@ -775,6 +795,34 @@ function createMailTransporter() {
   });
 
   return mailTransporter;
+}
+
+function getDateDeltaInDays(startDateString, endDateString) {
+  const start = parseDateOnlyToUtcTime(startDateString);
+  const end = parseDateOnlyToUtcTime(endDateString);
+  return Math.round((end - start) / (24 * 60 * 60 * 1000));
+}
+
+function parseDateOnlyToUtcTime(dateString) {
+  const [year, month, day] = String(dateString).split("-").map(Number);
+  return Date.UTC(year, month - 1, day);
+}
+
+function isValidPersonName(value) {
+  const name = cleanText(value);
+  return /^[A-Za-z][A-Za-z\s'.-]*$/.test(name) && hasNameVowel(name) && !hasUnsafeHtmlChars(value);
+}
+
+function hasUnsafeHtmlChars(value) {
+  return /[<>/]/.test(String(value || ""));
+}
+
+function stripUnsafeHtmlChars(value) {
+  return String(value || "").replace(/[<>/]/g, "");
+}
+
+function hasNameVowel(value) {
+  return /[aeiou]/i.test(String(value || ""));
 }
 
 async function sendBookingEmail(record) {

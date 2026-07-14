@@ -1,4 +1,5 @@
 let activeFilter = "all";
+const MAX_BOOKING_NIGHTS = 30;
 const FALLBACK_MENU_ITEMS = [
   {
     id: "menu-1",
@@ -290,8 +291,16 @@ function initializeBookingDates() {
 }
 
 function validateBookingForm(booking) {
+  if (!isValidPersonName(booking.name)) {
+    return { valid: false, message: "Please enter a valid guest name using letters, spaces, apostrophes, periods, or hyphens." };
+  }
+
   if (!/^\d{10}$/.test(booking.phone)) {
     return { valid: false, message: "Please enter a valid 10-digit phone number." };
+  }
+
+  if (!isValidDateString(booking.checkin) || !isValidDateString(booking.checkout)) {
+    return { valid: false, message: "Please choose valid booking dates." };
   }
 
   const today = getTodayDateString();
@@ -303,12 +312,25 @@ function validateBookingForm(booking) {
     return { valid: false, message: "Check-out date must be after check-in date." };
   }
 
+  const stayNights = getDateDeltaInDays(booking.checkin, booking.checkout);
+  if (stayNights > MAX_BOOKING_NIGHTS) {
+    return { valid: false, message: `Bookings cannot be longer than ${MAX_BOOKING_NIGHTS} nights.` };
+  }
+
   return { valid: true };
 }
 
 function validateInquiryForm(inquiry) {
+  if (!isValidPersonName(inquiry.name)) {
+    return { valid: false, message: "Please enter a valid name using letters, spaces, apostrophes, periods, or hyphens." };
+  }
+
   if (!/^\d{10}$/.test(inquiry.phone)) {
     return { valid: false, message: "Please enter a valid 10-digit phone number." };
+  }
+
+  if (hasUnsafeHtmlChars(inquiry.message)) {
+    return { valid: false, message: "Message cannot include HTML characters like <, >, or /." };
   }
 
   return { valid: true };
@@ -329,6 +351,44 @@ function getNextDateString(dateString) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function isValidDateString(value) {
+  const dateString = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return false;
+  }
+
+  const date = new Date(`${dateString}T00:00:00`);
+  return !Number.isNaN(date.getTime()) && dateString === [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+function getDateDeltaInDays(startDateString, endDateString) {
+  const start = parseDateOnlyToUtcTime(startDateString);
+  const end = parseDateOnlyToUtcTime(endDateString);
+  return Math.round((end - start) / (24 * 60 * 60 * 1000));
+}
+
+function parseDateOnlyToUtcTime(dateString) {
+  const [year, month, day] = String(dateString).split("-").map(Number);
+  return Date.UTC(year, month - 1, day);
+}
+
+function isValidPersonName(value) {
+  const name = String(value || "").replace(/\s+/g, " ").trim();
+  return /^[A-Za-z][A-Za-z\s'.-]{1,79}$/.test(name) && hasNameVowel(name) && !hasUnsafeHtmlChars(value);
+}
+
+function hasUnsafeHtmlChars(value) {
+  return /[<>/]/.test(String(value || ""));
+}
+
+function hasNameVowel(value) {
+  return /[aeiou]/i.test(String(value || ""));
 }
 
 function escapeHtml(value) {
