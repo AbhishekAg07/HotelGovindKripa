@@ -31,6 +31,7 @@ const mongoDbName = process.env.MONGODB_DB_NAME || "hotel_govind_kripa";
 const allowedOrigins = parseAllowedOrigins(process.env.ALLOWED_ORIGINS || "");
 const maxBodyBytes = Number(process.env.MAX_BODY_BYTES || 100000);
 const maxBookingNights = Number(process.env.MAX_BOOKING_NIGHTS || 30);
+const trustProxy = String(process.env.TRUST_PROXY || "false").toLowerCase() === "true";
 const rateLimitStore = new Map();
 const files = {
   bookings: path.join(dataDir, "bookings.json"),
@@ -100,11 +101,11 @@ const requestHandler = async (req, res) => {
       };
 
       await storage.addBooking(record);
-      sendBookingEmail(record);
+      const emailResult = await sendBookingEmail(record);
 
       return sendJson(res, 201, {
         ok: true,
-        message: "Booking received. We will get back to you soon."
+        message: getSubmissionMessage("Booking received. We will get back to you soon.", emailResult)
       });
     }
 
@@ -127,11 +128,11 @@ const requestHandler = async (req, res) => {
       };
 
       await storage.addInquiry(record);
-      sendInquiryEmail(record);
+      const emailResult = await sendInquiryEmail(record);
 
       return sendJson(res, 201, {
         ok: true,
-        message: "Inquiry received. We will get back to you soon."
+        message: getSubmissionMessage("Inquiry received. We will get back to you soon.", emailResult)
       });
     }
 
@@ -491,6 +492,19 @@ function parseAllowedOrigins(value) {
     .filter(Boolean);
 }
 
+function getAllowedConnectSources() {
+  const sources = new Set(["'self'"]);
+  allowedOrigins.forEach((origin) => {
+    try {
+      const originUrl = new URL(origin);
+      sources.add(originUrl.origin);
+    } catch (error) {
+      console.warn(`Ignoring invalid ALLOWED_ORIGINS entry in CSP: ${origin}`);
+    }
+  });
+  return Array.from(sources).join(" ");
+}
+
 function setSecurityHeaders(res) {
   res.setHeader("Content-Security-Policy", [
     "default-src 'self'",
@@ -498,7 +512,7 @@ function setSecurityHeaders(res) {
     "style-src 'self' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' https://images.unsplash.com data:",
-    "connect-src 'self'",
+    `connect-src ${getAllowedConnectSources()}`,
     "frame-src https://www.google.com https://maps.google.com",
     "base-uri 'self'",
     "form-action 'self'",
@@ -757,6 +771,10 @@ function consumeRateLimit(req, bucket, limit, windowMs) {
 }
 
 function getClientIp(req) {
+  if (!trustProxy) {
+    return req.socket.remoteAddress || "unknown";
+  }
+
   const forwardedFor = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
   return forwardedFor || req.socket.remoteAddress || "unknown";
 }
@@ -876,6 +894,14 @@ async function sendEmail(subject, text, replyTo = smtpConfig.user) {
     console.error("Email delivery failed:", error.message);
     return { ok: false, reason: "send_failed", message: error.message };
   }
+}
+
+function getSubmissionMessage(successMessage, emailResult) {
+  if (emailResult.ok) {
+    return successMessage;
+  }
+
+  return `${successMessage} Email notification could not be sent, so please check the admin dashboard.`;
 }
 
 function getTodayDateString() {

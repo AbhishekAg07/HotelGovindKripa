@@ -43,6 +43,7 @@ Important variables:
 - `PORT`: server port, defaults to `8787`
 - `ADMIN_KEY`: required for admin dashboard access
 - `MONGODB_URI`: production database connection string
+- `TRUST_PROXY`: set to `true` only when deployed behind a trusted proxy such as Render
 - `HOTEL_EMAIL`: recipient for booking and inquiry notifications
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`: optional SMTP settings
 
@@ -84,6 +85,7 @@ Set environment variables in Render from `backend/.env.example`, especially:
 - `MONGODB_URI`
 - `MONGODB_DB_NAME`
 - `ALLOWED_ORIGINS`
+- `TRUST_PROXY=true`
 - `HOTEL_EMAIL`
 - `SMTP_HOST`
 - `SMTP_PORT`

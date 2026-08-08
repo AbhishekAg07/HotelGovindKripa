@@ -2,7 +2,7 @@ const ADMIN_STORAGE_KEY = "hotel-admin-key";
 const API_BASE = String(window.HOTEL_API_BASE || "").replace(/\/+$/, "");
 
 document.addEventListener("DOMContentLoaded", () => {
-  const savedKey = localStorage.getItem(ADMIN_STORAGE_KEY);
+  const savedKey = sessionStorage.getItem(ADMIN_STORAGE_KEY);
   document.getElementById("admin-key-form").addEventListener("submit", handleAdminLogin);
   document.getElementById("menu-form").addEventListener("submit", handleMenuSubmit);
   document.getElementById("menu-cancel-btn").addEventListener("click", resetMenuForm);
@@ -33,7 +33,7 @@ async function openDashboard(key) {
 
   try {
     await fetchAdminJson("/api/bookings", key);
-    localStorage.setItem(ADMIN_STORAGE_KEY, key);
+    sessionStorage.setItem(ADMIN_STORAGE_KEY, key);
     document.getElementById("login-section").hidden = true;
     document.getElementById("dashboard-section").hidden = false;
     await refreshDashboard();
@@ -267,7 +267,7 @@ function fetchAdminJson(route, key, options = {}) {
 }
 
 function getAdminKey() {
-  return localStorage.getItem(ADMIN_STORAGE_KEY) || "";
+  return sessionStorage.getItem(ADMIN_STORAGE_KEY) || "";
 }
 
 function setStatus(id, message) {
