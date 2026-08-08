@@ -46,6 +46,10 @@ const smtpConfig = {
   user: process.env.SMTP_USER || "",
   pass: String(process.env.SMTP_PASS || "").replace(/\s+/g, "")
 };
+const resendConfig = {
+  apiKey: String(process.env.RESEND_API_KEY || "").trim(),
+  from: process.env.RESEND_FROM_EMAIL || "Hotel Govind Kripa <onboarding@resend.dev>"
+};
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -59,6 +63,7 @@ const contentTypes = {
   ".ico": "image/x-icon"
 };
 const transporter = createMailTransporter();
+const emailProvider = resendConfig.apiKey ? "resend" : transporter ? "smtp" : "none";
 const storage = createStorage();
 
 if (!storage.isMongo) {
@@ -311,10 +316,10 @@ if (require.main === module) {
 
   server.listen(port, host, () => {
     console.log(`Hotel Govind Kripa server running at http://${host}:${port}`);
-    if (transporter) {
-      console.log(`Automatic email notifications are enabled for ${hotelEmail}`);
+    if (emailProvider !== "none") {
+      console.log(`Automatic email notifications are enabled with ${emailProvider} for ${hotelEmail}`);
     } else {
-      console.log("Automatic email notifications are disabled. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and HOTEL_EMAIL to enable them.");
+      console.log("Automatic email notifications are disabled. Set RESEND_API_KEY or SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and HOTEL_EMAIL to enable them.");
     }
 
     if (!adminKey) {
@@ -784,6 +789,10 @@ function createId(prefix) {
 }
 
 function createMailTransporter() {
+  if (resendConfig.apiKey) {
+    return null;
+  }
+
   if (!nodemailer || !smtpConfig.host || !smtpConfig.user || !smtpConfig.pass) {
     console.warn("Email transporter is not configured. Check SMTP_HOST, SMTP_USER, and SMTP_PASS.");
     return null;
@@ -876,6 +885,10 @@ async function sendInquiryEmail(record) {
 }
 
 async function sendEmail(subject, text, replyTo = smtpConfig.user) {
+  if (resendConfig.apiKey) {
+    return sendResendEmail(subject, text, replyTo);
+  }
+
   if (!transporter) {
     return { ok: false, reason: "not_configured" };
   }
@@ -892,6 +905,38 @@ async function sendEmail(subject, text, replyTo = smtpConfig.user) {
     return { ok: true };
   } catch (error) {
     console.error("Email delivery failed:", error.message);
+    return { ok: false, reason: "send_failed", message: error.message };
+  }
+}
+
+async function sendResendEmail(subject, text, replyTo = hotelEmail) {
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${resendConfig.apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: resendConfig.from,
+        to: [hotelEmail],
+        reply_to: replyTo || hotelEmail,
+        subject,
+        text
+      })
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const message = result.message || result.error || `HTTP ${response.status}`;
+      console.error("Resend email delivery failed:", message);
+      return { ok: false, reason: "send_failed", message };
+    }
+
+    console.log(`Email notification sent with Resend: ${subject}`);
+    return { ok: true };
+  } catch (error) {
+    console.error("Resend email delivery failed:", error.message);
     return { ok: false, reason: "send_failed", message: error.message };
   }
 }

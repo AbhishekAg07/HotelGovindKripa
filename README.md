@@ -45,6 +45,7 @@ Important variables:
 - `MONGODB_URI`: production database connection string
 - `TRUST_PROXY`: set to `true` only when deployed behind a trusted proxy such as Render
 - `HOTEL_EMAIL`: recipient for booking and inquiry notifications
+- `RESEND_API_KEY`, `RESEND_FROM_EMAIL`: recommended email delivery on Render free services
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`: optional SMTP settings
 
 Without `MONGODB_URI`, local development uses JSON files in `backend/data/`. Do not use JSON fallback for production traffic.
@@ -87,6 +88,8 @@ Set environment variables in Render from `backend/.env.example`, especially:
 - `ALLOWED_ORIGINS`
 - `TRUST_PROXY=true`
 - `HOTEL_EMAIL`
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
 - `SMTP_HOST`
 - `SMTP_PORT`
 - `SMTP_SECURE`
@@ -94,6 +97,8 @@ Set environment variables in Render from `backend/.env.example`, especially:
 - `SMTP_PASS`
 
 Use MongoDB Atlas or another MongoDB database in production. Render can restart services, so MongoDB is safer than relying on local JSON files for production traffic.
+
+For email on Render free services, prefer `RESEND_API_KEY` because outbound SMTP ports are blocked on free web services. SMTP settings can still be used locally or on hosting plans that allow SMTP traffic.
 
 After deployment, test:
 
