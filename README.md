@@ -45,10 +45,15 @@ Important variables:
 - `MONGODB_URI`: production database connection string
 - `TRUST_PROXY`: set to `true` only when deployed behind a trusted proxy such as Render
 - `HOTEL_EMAIL`: recipient for booking and inquiry notifications
-- `RESEND_API_KEY`, `RESEND_FROM_EMAIL`: recommended email delivery on Render free services
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`: optional SMTP settings
+- `RESEND_API_KEY`, `RESEND_FROM_EMAIL`: free email delivery on Render
 
 Without `MONGODB_URI`, local development uses JSON files in `backend/data/`. Do not use JSON fallback for production traffic.
+
+## Automatic Email
+
+For Render Free services, configure Resend because Render blocks SMTP. In the Render backend service, set `RESEND_API_KEY` and `HOTEL_EMAIL` to the same email address used to register the Resend account. Keep `RESEND_FROM_EMAIL` as `Hotel Govind Kripa <onboarding@resend.dev>`.
+
+Bookings and inquiries are saved before the hotel notification email is sent, so customers see an immediate confirmation on the website. The free Resend sender is for owner notifications only; customer email confirmations require a domain you own.
 
 ## Deploy Frontend on Vercel
 
@@ -90,15 +95,10 @@ Set environment variables in Render from `backend/.env.example`, especially:
 - `HOTEL_EMAIL`
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
-- `SMTP_HOST`
-- `SMTP_PORT`
-- `SMTP_SECURE`
-- `SMTP_USER`
-- `SMTP_PASS`
 
 Use MongoDB Atlas or another MongoDB database in production. Render can restart services, so MongoDB is safer than relying on local JSON files for production traffic.
 
-For email on Render free services, prefer `RESEND_API_KEY` because outbound SMTP ports are blocked on free web services. SMTP settings can still be used locally or on hosting plans that allow SMTP traffic.
+For email on Render free services, use `RESEND_API_KEY`. SMTP is not used by this project.
 
 After deployment, test:
 

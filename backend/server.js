@@ -4,14 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const backendDir = __dirname;
 const frontendDir = path.resolve(backendDir, "..", "frontend");
-let nodemailer = null;
 let MongoClient = null;
-
-try {
-  nodemailer = require("nodemailer");
-} catch (error) {
-  nodemailer = null;
-}
 
 try {
   ({ MongoClient } = require("mongodb"));
@@ -38,14 +31,6 @@ const files = {
   inquiries: path.join(dataDir, "inquiries.json"),
   menuItems: path.join(dataDir, "menu-items.json")
 };
-const smtpConfig = {
-  host: process.env.SMTP_HOST || "",
-  port: Number(process.env.SMTP_PORT || 587),
-  secure: String(process.env.SMTP_SECURE || "false").toLowerCase() === "true",
-  family: Number(process.env.SMTP_FAMILY || 4),
-  user: process.env.SMTP_USER || "",
-  pass: String(process.env.SMTP_PASS || "").replace(/\s+/g, "")
-};
 const resendConfig = {
   apiKey: String(process.env.RESEND_API_KEY || "").trim(),
   from: process.env.RESEND_FROM_EMAIL || "Hotel Govind Kripa <onboarding@resend.dev>"
@@ -62,8 +47,7 @@ const contentTypes = {
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon"
 };
-const transporter = createMailTransporter();
-const emailProvider = resendConfig.apiKey ? "resend" : transporter ? "smtp" : "none";
+const emailProvider = resendConfig.apiKey ? "resend" : "none";
 const storage = createStorage();
 
 if (!storage.isMongo) {
@@ -106,11 +90,11 @@ const requestHandler = async (req, res) => {
       };
 
       await storage.addBooking(record);
-      const emailResult = await sendBookingEmail(record);
+      queueEmailDelivery("Hotel booking notification", () => sendBookingEmail(record));
 
       return sendJson(res, 201, {
         ok: true,
-        message: getSubmissionMessage("Booking received. We will get back to you soon.", emailResult)
+        message: "Booking received. We will contact you soon."
       });
     }
 
@@ -133,11 +117,11 @@ const requestHandler = async (req, res) => {
       };
 
       await storage.addInquiry(record);
-      const emailResult = await sendInquiryEmail(record);
+      queueEmailDelivery("Hotel inquiry notification", () => sendInquiryEmail(record));
 
       return sendJson(res, 201, {
         ok: true,
-        message: getSubmissionMessage("Inquiry received. We will get back to you soon.", emailResult)
+        message: "Inquiry received. We will get back to you soon."
       });
     }
 
@@ -319,7 +303,7 @@ if (require.main === module) {
     if (emailProvider !== "none") {
       console.log(`Automatic email notifications are enabled with ${emailProvider} for ${hotelEmail}`);
     } else {
-      console.log("Automatic email notifications are disabled. Set RESEND_API_KEY or SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and HOTEL_EMAIL to enable them.");
+      console.log("Automatic email notifications are disabled. Set RESEND_API_KEY and HOTEL_EMAIL to enable them.");
     }
 
     if (!adminKey) {
@@ -655,7 +639,7 @@ function validateInquiry(payload) {
     return { valid: false, message: "Phone number must be exactly 10 digits." };
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(payload.email).trim()) || !isLengthBetween(payload.email, 5, 120)) {
+  if (!isValidEmail(payload.email)) {
     return { valid: false, message: "Please enter a valid email address." };
   }
 
@@ -788,42 +772,6 @@ function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function createMailTransporter() {
-  if (resendConfig.apiKey) {
-    return null;
-  }
-
-  if (!nodemailer || !smtpConfig.host || !smtpConfig.user || !smtpConfig.pass) {
-    console.warn("Email transporter is not configured. Check SMTP_HOST, SMTP_USER, and SMTP_PASS.");
-    return null;
-  }
-
-  const mailTransporter = nodemailer.createTransport({
-    host: smtpConfig.host,
-    port: smtpConfig.port,
-    secure: smtpConfig.secure,
-    family: smtpConfig.family,
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-    auth: {
-      user: smtpConfig.user,
-      pass: smtpConfig.pass
-    }
-  });
-
-  mailTransporter.verify((error) => {
-    if (error) {
-      console.error("Email transporter verification failed:", error.message);
-      return;
-    }
-
-    console.log("Email transporter verified successfully.");
-  });
-
-  return mailTransporter;
-}
-
 function getDateDeltaInDays(startDateString, endDateString) {
   const start = parseDateOnlyToUtcTime(startDateString);
   const end = parseDateOnlyToUtcTime(endDateString);
@@ -838,6 +786,10 @@ function parseDateOnlyToUtcTime(dateString) {
 function isValidPersonName(value) {
   const name = cleanText(value);
   return /^[A-Za-z][A-Za-z\s'.-]*$/.test(name) && hasNameVowel(name) && !hasUnsafeHtmlChars(value);
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim()) && isLengthBetween(value, 5, 120);
 }
 
 function hasUnsafeHtmlChars(value) {
@@ -884,29 +836,25 @@ async function sendInquiryEmail(record) {
   return sendEmail(subject, text, record.email);
 }
 
-async function sendEmail(subject, text, replyTo = smtpConfig.user) {
-  if (resendConfig.apiKey) {
-    return sendResendEmail(subject, text, replyTo);
-  }
+function queueEmailDelivery(label, task) {
+  // Saving a customer request must not wait for an external email provider.
+  setImmediate(() => {
+    task()
+      .then((result) => {
+        if (!result.ok) {
+          console.error(`${label} failed: ${result.message || result.reason}`);
+        }
+      })
+      .catch((error) => console.error(`${label} failed:`, error.message));
+  });
+}
 
-  if (!transporter) {
+async function sendEmail(subject, text, replyTo = hotelEmail) {
+  if (!resendConfig.apiKey) {
     return { ok: false, reason: "not_configured" };
   }
 
-  try {
-    await transporter.sendMail({
-      from: smtpConfig.user,
-      to: hotelEmail,
-      replyTo,
-      subject,
-      text
-    });
-    console.log(`Email notification sent: ${subject}`);
-    return { ok: true };
-  } catch (error) {
-    console.error("Email delivery failed:", error.message);
-    return { ok: false, reason: "send_failed", message: error.message };
-  }
+  return sendResendEmail(subject, text, replyTo);
 }
 
 async function sendResendEmail(subject, text, replyTo = hotelEmail) {
@@ -939,14 +887,6 @@ async function sendResendEmail(subject, text, replyTo = hotelEmail) {
     console.error("Resend email delivery failed:", error.message);
     return { ok: false, reason: "send_failed", message: error.message };
   }
-}
-
-function getSubmissionMessage(successMessage, emailResult) {
-  if (emailResult.ok) {
-    return successMessage;
-  }
-
-  return `${successMessage} Email notification could not be sent, so please check the admin dashboard.`;
 }
 
 function getTodayDateString() {

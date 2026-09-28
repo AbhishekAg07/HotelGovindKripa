@@ -191,7 +191,7 @@ async function submitBooking(event) {
   status.textContent = "Saving your booking...";
 
   try {
-    const result = await postFormData("/api/bookings", booking, "hotel-bookings");
+    const result = await postFormData("/api/bookings", booking);
 
     document.getElementById("booking-form").reset();
     status.textContent = result.message;
@@ -222,7 +222,7 @@ async function submitInquiry(event) {
   status.textContent = "Saving your inquiry...";
 
   try {
-    const result = await postFormData("/api/inquiries", inquiry, "hotel-inquiries");
+    const result = await postFormData("/api/inquiries", inquiry);
 
     document.querySelector(".contact-form").reset();
     status.textContent = result.message;
@@ -233,7 +233,7 @@ async function submitInquiry(event) {
   return false;
 }
 
-async function postFormData(route, payload, storageKey) {
+async function postFormData(route, payload) {
   try {
     const response = await fetch(`${API_BASE}${route}`, {
       method: "POST",
@@ -254,23 +254,12 @@ async function postFormData(route, payload, storageKey) {
       throw error;
     }
 
-    saveSubmissionLocally(storageKey, payload);
     throw new Error("Server is offline right now. Please try again in a moment.");
   }
 }
 
 function isNetworkFailure(error) {
   return error instanceof TypeError || /fetch/i.test(String(error.message || ""));
-}
-
-function saveSubmissionLocally(storageKey, payload) {
-  const savedItems = JSON.parse(localStorage.getItem(storageKey) || "[]");
-  savedItems.push({
-    id: `${storageKey}-${Date.now()}`,
-    createdAt: new Date().toISOString(),
-    ...payload
-  });
-  localStorage.setItem(storageKey, JSON.stringify(savedItems));
 }
 
 function initializeBookingDates() {
