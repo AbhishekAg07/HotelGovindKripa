@@ -31,6 +31,7 @@ const FALLBACK_MENU_ITEMS = [
   }
 ];
 
+// Page setup and interactions
 document.addEventListener("DOMContentLoaded", () => {
   document.body.classList.add("is-loaded");
   initializeBookingDates();
@@ -119,6 +120,7 @@ function filterMenu(type, button) {
   renderFilteredMenu();
 }
 
+// Public menu
 async function loadMenuItems() {
   const status = document.getElementById("menu-status");
   status.textContent = "Loading menu...";
@@ -169,6 +171,7 @@ function renderFilteredMenu() {
   }
 }
 
+// Customer forms
 async function submitBooking(event) {
   event.preventDefault();
 
@@ -262,6 +265,7 @@ function isNetworkFailure(error) {
   return error instanceof TypeError || /fetch/i.test(String(error.message || ""));
 }
 
+// Browser-side validation
 function initializeBookingDates() {
   const today = getTodayDateString();
   const checkin = document.getElementById("checkin");
@@ -380,6 +384,7 @@ function hasNameVowel(value) {
   return /[aeiou]/i.test(String(value || ""));
 }
 
+// Safe display helpers
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")

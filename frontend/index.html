@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hotel Govind Kripa</title>
+<meta name="description" content="Hotel Govind Kripa offers comfortable stays and fresh dining in Kushinagar.">
+<meta property="og:title" content="Hotel Govind Kripa">
+<meta property="og:description" content="Comfortable stays and fresh dining in Kushinagar.">
+<meta property="og:image" content="assets/hotel-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
@@ -80,8 +84,8 @@
                 </select>
               </label>
             </div>
-            <input type="text" id="bookingName" name="name" placeholder="Guest name" pattern="[A-Za-z][A-Za-z .'-]{1,79}" maxlength="80" title="Use letters, spaces, apostrophes, periods, or hyphens only" required>
-            <input type="tel" id="bookingPhone" name="phone" placeholder="10-digit phone number" pattern="[0-9]{10}" inputmode="numeric" maxlength="10" required>
+            <input type="text" id="bookingName" name="name" placeholder="Guest name" autocomplete="name" aria-label="Guest name" pattern="[A-Za-z][A-Za-z .'-]{1,79}" maxlength="80" title="Use letters, spaces, apostrophes, periods, or hyphens only" required>
+            <input type="tel" id="bookingPhone" name="phone" placeholder="10-digit phone number" autocomplete="tel" aria-label="Phone number" pattern="[0-9]{10}" inputmode="numeric" maxlength="10" required>
             <button type="submit" class="primary-btn booking-btn">Reserve Now</button>
             <p id="booking-status" class="form-status" aria-live="polite"></p>
           </form>
@@ -226,8 +230,8 @@
         <form class="contact-form card" id="inquiry-form">
           <input type="text" id="name" placeholder="Your name" pattern="[A-Za-z][A-Za-z .'-]{1,79}" maxlength="80" title="Use letters, spaces, apostrophes, periods, or hyphens only" required>
           <input type="tel" id="phone" placeholder="10-digit phone number" pattern="[0-9]{10}" inputmode="numeric" maxlength="10" required>
-          <input type="email" id="email" placeholder="Email address" required>
-          <textarea id="message" placeholder="Tell us your travel dates, room preference, or restaurant query" maxlength="1000" required></textarea>
+          <input type="email" id="email" placeholder="Email address" autocomplete="email" aria-label="Email address" required>
+          <textarea id="message" placeholder="Tell us your travel dates, room preference, or restaurant query" aria-label="Inquiry message" maxlength="1000" required></textarea>
           <button type="submit" class="primary-btn">Send Inquiry</button>
           <p id="inquiry-status" class="form-status" aria-live="polite"></p>
         </form>

@@ -2,12 +2,29 @@
 
 Clean full-stack hotel website with a separated frontend and backend.
 
+## Highlights
+
+- Public booking and inquiry forms with server-side validation and rate limiting
+- MongoDB persistence with a local JSON development fallback
+- Protected admin dashboard for menu, bookings, inquiries, and email diagnostics
+- Resend email notifications designed for free Render hosting
+- Security headers, CORS allow-listing, request-size limits, and expiring admin sessions
+- Automated validation tests and GitHub Actions CI
+
 ## Project Structure
 
 ```text
 frontend/   Public HTML, CSS, browser JavaScript, and images
 backend/    Node API server, environment config, storage, and dependencies
 ```
+
+## Code Guide
+
+- `backend/server.js`: configuration, routes, request handlers, storage, validation, email, and static-file serving in clearly marked sections.
+- `frontend/script.js`: public-page behavior, menu loading, booking/inquiry forms, and browser validation.
+- `frontend/admin.js`: admin login, dashboard actions, rendering, and API helpers.
+
+To change a feature, start in the matching file and section. API paths are collected near the top of `backend/server.js` in `routeHandlers`.
 
 ## Run Locally
 
@@ -30,6 +47,20 @@ Run checks:
 npm.cmd run check
 ```
 
+The check command runs JavaScript syntax checks and the backend validation tests.
+
+## API Overview
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/bookings` | Save a booking request |
+| `POST` | `/api/inquiries` | Save a customer inquiry |
+| `GET` | `/api/menu-items` | Load the public menu |
+| `POST` | `/api/admin/login` | Exchange the admin key for an expiring session token |
+| `GET` | `/api/bookings` | View bookings as an admin |
+| `GET` | `/api/inquiries` | View inquiries as an admin |
+| `POST` | `/api/menu-items` | Add a menu item as an admin |
+
 ## Configuration
 
 Backend environment files live in `backend/`.
@@ -42,6 +73,7 @@ Important variables:
 
 - `PORT`: server port, defaults to `8787`
 - `ADMIN_KEY`: required for admin dashboard access
+- `ADMIN_SESSION_HOURS`: admin session lifetime, defaults to `8`
 - `MONGODB_URI`: production database connection string
 - `TRUST_PROXY`: set to `true` only when deployed behind a trusted proxy such as Render
 - `HOTEL_EMAIL`: recipient for booking and inquiry notifications
@@ -64,6 +96,8 @@ Deploy only the `frontend/` directory to Vercel.
 - Build command: leave empty
 - Output directory: `.`
 - Install command: leave empty
+
+The included `vercel.json` adds browser security headers to the static deployment.
 
 Before deploying the frontend, set the Render backend URL in `frontend/config.js`:
 
@@ -107,3 +141,19 @@ https://your-render-backend.onrender.com/api/health
 ```
 
 After Vercel gives you the live frontend URL, add that exact URL to the backend `ALLOWED_ORIGINS` environment variable in Render, then redeploy the backend.
+
+## Architecture
+
+```text
+Vercel static frontend
+        |
+        v
+Render Node.js API ---- MongoDB Atlas
+        |
+        v
+Resend email API
+```
+
+## Quality Checks
+
+GitHub Actions runs `npm run check` and a production dependency audit on every push and pull request. The validation tests live in `backend/test/` and use Node's built-in test runner, so no paid tooling is required.

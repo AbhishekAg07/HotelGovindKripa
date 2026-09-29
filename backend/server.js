@@ -26,6 +26,8 @@ const maxBodyBytes = Number(process.env.MAX_BODY_BYTES || 100000);
 const maxBookingNights = Number(process.env.MAX_BOOKING_NIGHTS || 30);
 const trustProxy = String(process.env.TRUST_PROXY || "false").toLowerCase() === "true";
 const rateLimitStore = new Map();
+const adminSessions = new Map();
+const adminSessionTtlMs = Number(process.env.ADMIN_SESSION_HOURS || 8) * 60 * 60 * 1000;
 const files = {
   bookings: path.join(dataDir, "bookings.json"),
   inquiries: path.join(dataDir, "inquiries.json"),
@@ -54,246 +56,266 @@ if (!storage.isMongo) {
   ensureDataStore();
 }
 
+// Routing
+const routeHandlers = new Map([
+  ["POST /api/bookings", createBooking],
+  ["POST /api/inquiries", createInquiry],
+  ["POST /api/admin/login", loginAdmin],
+  ["GET /api/menu-items", listMenuItems],
+  ["GET /api/bookings", listBookings],
+  ["GET /api/inquiries", listInquiries],
+  ["POST /api/menu-items", createMenuItem],
+  ["GET /api/health", getHealth],
+  ["POST /api/test-email", testEmail]
+]);
+
 const requestHandler = async (req, res) => {
   try {
-    const url = new URL(req.url, `http://${req.headers.host || `${host}:${port}`}`);
-    const route = url.pathname;
+    const route = new URL(req.url, `http://${req.headers.host || `${host}:${port}`}`).pathname;
     setSecurityHeaders(res);
 
-    if (route.startsWith("/api/")) {
-      if (!applyCors(req, res)) {
-        return sendJson(res, 403, { ok: false, message: "Origin is not allowed." });
-      }
+    if (!route.startsWith("/api/")) {
+      return serveStaticFile(route, res);
     }
 
-    if (req.method === "OPTIONS" && route.startsWith("/api/")) {
+    if (!applyCors(req, res)) {
+      return sendJson(res, 403, { ok: false, message: "Origin is not allowed." });
+    }
+
+    if (req.method === "OPTIONS") {
       res.writeHead(204);
       return res.end();
     }
 
-    if (req.method === "POST" && route === "/api/bookings") {
-      if (!consumeRateLimit(req, "public-form", 10, 15 * 60 * 1000)) {
-        return sendJson(res, 429, { ok: false, message: "Too many requests. Please try again later." });
-      }
-
-      const payload = await readJsonBody(req);
-      const validation = validateBooking(payload);
-      if (!validation.valid) {
-        return sendJson(res, 400, { ok: false, message: validation.message });
-      }
-
-      const record = {
-        id: createId("booking"),
-        createdAt: new Date().toISOString(),
-        status: "new",
-        ...normalizeBooking(payload)
-      };
-
-      await storage.addBooking(record);
-      queueEmailDelivery("Hotel booking notification", () => sendBookingEmail(record));
-
-      return sendJson(res, 201, {
-        ok: true,
-        message: "Booking received. We will contact you soon."
-      });
+    const handler = routeHandlers.get(`${req.method} ${route}`) || getDynamicRouteHandler(req.method, route);
+    if (!handler) {
+      return sendJson(res, 404, { ok: false, message: "API route not found." });
     }
 
-    if (req.method === "POST" && route === "/api/inquiries") {
-      if (!consumeRateLimit(req, "public-form", 10, 15 * 60 * 1000)) {
-        return sendJson(res, 429, { ok: false, message: "Too many requests. Please try again later." });
-      }
-
-      const payload = await readJsonBody(req);
-      const validation = validateInquiry(payload);
-      if (!validation.valid) {
-        return sendJson(res, 400, { ok: false, message: validation.message });
-      }
-
-      const record = {
-        id: createId("inquiry"),
-        createdAt: new Date().toISOString(),
-        status: "new",
-        ...normalizeInquiry(payload)
-      };
-
-      await storage.addInquiry(record);
-      queueEmailDelivery("Hotel inquiry notification", () => sendInquiryEmail(record));
-
-      return sendJson(res, 201, {
-        ok: true,
-        message: "Inquiry received. We will get back to you soon."
-      });
-    }
-
-    if (req.method === "GET" && route === "/api/menu-items") {
-      return sendJson(res, 200, await storage.listMenuItems());
-    }
-
-    if (req.method === "GET" && route === "/api/bookings") {
-      if (!consumeRateLimit(req, "admin", 120, 15 * 60 * 1000)) {
-        return sendJson(res, 429, { ok: false, message: "Too many requests. Please try again later." });
-      }
-
-      if (!isAdminRequest(req)) {
-        return sendJson(res, 401, { ok: false, message: "Unauthorized." });
-      }
-
-      return sendJson(res, 200, await storage.listBookings());
-    }
-
-    if (req.method === "GET" && route === "/api/inquiries") {
-      if (!consumeRateLimit(req, "admin", 120, 15 * 60 * 1000)) {
-        return sendJson(res, 429, { ok: false, message: "Too many requests. Please try again later." });
-      }
-
-      if (!isAdminRequest(req)) {
-        return sendJson(res, 401, { ok: false, message: "Unauthorized." });
-      }
-
-      return sendJson(res, 200, await storage.listInquiries());
-    }
-
-    const bookingMatch = route.match(/^\/api\/bookings\/([^/]+)$/);
-    if (bookingMatch && req.method === "DELETE") {
-      if (!consumeRateLimit(req, "admin", 120, 15 * 60 * 1000)) {
-        return sendJson(res, 429, { ok: false, message: "Too many requests. Please try again later." });
-      }
-
-      if (!isAdminRequest(req)) {
-        return sendJson(res, 401, { ok: false, message: "Unauthorized." });
-      }
-
-      const bookingId = decodeURIComponent(bookingMatch[1]);
-      const deleted = await storage.deleteBooking(bookingId);
-      if (!deleted) {
-        return sendJson(res, 404, { ok: false, message: "Booking not found." });
-      }
-
-      return sendJson(res, 200, { ok: true, message: "Booking deleted." });
-    }
-
-    const inquiryMatch = route.match(/^\/api\/inquiries\/([^/]+)$/);
-    if (inquiryMatch && req.method === "DELETE") {
-      if (!consumeRateLimit(req, "admin", 120, 15 * 60 * 1000)) {
-        return sendJson(res, 429, { ok: false, message: "Too many requests. Please try again later." });
-      }
-
-      if (!isAdminRequest(req)) {
-        return sendJson(res, 401, { ok: false, message: "Unauthorized." });
-      }
-
-      const inquiryId = decodeURIComponent(inquiryMatch[1]);
-      const deleted = await storage.deleteInquiry(inquiryId);
-      if (!deleted) {
-        return sendJson(res, 404, { ok: false, message: "Inquiry not found." });
-      }
-
-      return sendJson(res, 200, { ok: true, message: "Inquiry deleted." });
-    }
-
-    if (req.method === "POST" && route === "/api/menu-items") {
-      if (!consumeRateLimit(req, "admin", 120, 15 * 60 * 1000)) {
-        return sendJson(res, 429, { ok: false, message: "Too many requests. Please try again later." });
-      }
-
-      if (!isAdminRequest(req)) {
-        return sendJson(res, 401, { ok: false, message: "Unauthorized." });
-      }
-
-      const payload = await readJsonBody(req);
-      const validation = validateMenuItem(payload);
-      if (!validation.valid) {
-        return sendJson(res, 400, { ok: false, message: validation.message });
-      }
-
-      const item = normalizeMenuItem({
-        id: createId("menu"),
-        createdAt: new Date().toISOString(),
-        ...payload
-      });
-
-      await storage.addMenuItem(item);
-      return sendJson(res, 201, { ok: true, message: "Menu item added.", item });
-    }
-
-    const menuItemMatch = route.match(/^\/api\/menu-items\/([^/]+)$/);
-    if (menuItemMatch && (req.method === "PUT" || req.method === "DELETE")) {
-      if (!consumeRateLimit(req, "admin", 120, 15 * 60 * 1000)) {
-        return sendJson(res, 429, { ok: false, message: "Too many requests. Please try again later." });
-      }
-
-      if (!isAdminRequest(req)) {
-        return sendJson(res, 401, { ok: false, message: "Unauthorized." });
-      }
-
-      const itemId = decodeURIComponent(menuItemMatch[1]);
-      const existingItem = await storage.getMenuItem(itemId);
-      if (!existingItem) {
-        return sendJson(res, 404, { ok: false, message: "Menu item not found." });
-      }
-
-      if (req.method === "DELETE") {
-        await storage.deleteMenuItem(itemId);
-        return sendJson(res, 200, { ok: true, message: "Menu item deleted." });
-      }
-
-      const payload = await readJsonBody(req);
-      const validation = validateMenuItem(payload);
-      if (!validation.valid) {
-        return sendJson(res, 400, { ok: false, message: validation.message });
-      }
-
-      const updatedItem = normalizeMenuItem({
-        ...existingItem,
-        ...payload,
-        updatedAt: new Date().toISOString()
-      });
-
-      await storage.updateMenuItem(itemId, updatedItem);
-      return sendJson(res, 200, { ok: true, message: "Menu item updated.", item: updatedItem });
-    }
-
-    if (req.method === "GET" && route === "/api/health") {
-      return sendJson(res, 200, { ok: true, message: "Server is running.", storage: storage.name });
-    }
-
-    if (req.method === "POST" && route === "/api/test-email") {
-      if (!consumeRateLimit(req, "admin", 120, 15 * 60 * 1000)) {
-        return sendJson(res, 429, { ok: false, message: "Too many requests. Please try again later." });
-      }
-
-      if (!isAdminRequest(req)) {
-        return sendJson(res, 401, { ok: false, message: "Unauthorized." });
-      }
-
-      const emailResult = await sendEmail(
-        "Test Email - Hotel Govind Kripa",
-        [
-          "This is a test email from the Hotel Govind Kripa website.",
-          "",
-          `Sent at: ${new Date().toISOString()}`
-        ].join("\n")
-      );
-
-      if (!emailResult.ok) {
-        return sendJson(res, 500, {
-          ok: false,
-          message: `Email test failed: ${emailResult.message || emailResult.reason}`
-        });
-      }
-
-      return sendJson(res, 200, {
-        ok: true,
-        message: `Test email sent to ${hotelEmail}.`
-      });
-    }
-
-    serveStaticFile(route, res);
+    return handler(req, res);
   } catch (error) {
     console.error(error);
-    sendJson(res, error.statusCode || 500, { ok: false, message: error.publicMessage || "Internal server error." });
+    return sendJson(res, error.statusCode || 500, { ok: false, message: error.publicMessage || "Internal server error." });
   }
 };
+
+// Route handlers keep each API action small and easy to change independently.
+async function createBooking(req, res) {
+  if (!allowPublicSubmission(req, res)) {
+    return;
+  }
+
+  const payload = await readJsonBody(req);
+  const validation = validateBooking(payload);
+  if (!validation.valid) {
+    return sendJson(res, 400, { ok: false, message: validation.message });
+  }
+
+  const booking = createRecord("booking", normalizeBooking(payload));
+  await storage.addBooking(booking);
+  queueEmailDelivery("Hotel booking notification", () => sendBookingEmail(booking));
+
+  return sendJson(res, 201, {
+    ok: true,
+    message: "Booking received. We will contact you soon."
+  });
+}
+
+async function createInquiry(req, res) {
+  if (!allowPublicSubmission(req, res)) {
+    return;
+  }
+
+  const payload = await readJsonBody(req);
+  const validation = validateInquiry(payload);
+  if (!validation.valid) {
+    return sendJson(res, 400, { ok: false, message: validation.message });
+  }
+
+  const inquiry = createRecord("inquiry", normalizeInquiry(payload));
+  await storage.addInquiry(inquiry);
+  queueEmailDelivery("Hotel inquiry notification", () => sendInquiryEmail(inquiry));
+
+  return sendJson(res, 201, {
+    ok: true,
+    message: "Inquiry received. We will get back to you soon."
+  });
+}
+
+async function loginAdmin(req, res) {
+  if (!consumeRateLimit(req, "admin-login", 5, 15 * 60 * 1000)) {
+    return sendJson(res, 429, { ok: false, message: "Too many login attempts. Please try again later." });
+  }
+
+  const { key } = await readJsonBody(req);
+  if (!isValidAdminKey(key)) {
+    return sendJson(res, 401, { ok: false, message: "Unauthorized." });
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = Date.now() + adminSessionTtlMs;
+  adminSessions.set(token, expiresAt);
+
+  return sendJson(res, 200, { ok: true, token, expiresAt });
+}
+
+async function listMenuItems(req, res) {
+  return sendJson(res, 200, await storage.listMenuItems());
+}
+
+async function listBookings(req, res) {
+  return listAdminRecords(req, res, storage.listBookings);
+}
+
+async function listInquiries(req, res) {
+  return listAdminRecords(req, res, storage.listInquiries);
+}
+
+async function listAdminRecords(req, res, listRecords) {
+  if (!allowAdminRequest(req, res)) {
+    return;
+  }
+
+  return sendJson(res, 200, await listRecords());
+}
+
+async function createMenuItem(req, res) {
+  if (!allowAdminRequest(req, res)) {
+    return;
+  }
+
+  const payload = await readJsonBody(req);
+  const validation = validateMenuItem(payload);
+  if (!validation.valid) {
+    return sendJson(res, 400, { ok: false, message: validation.message });
+  }
+
+  const item = normalizeMenuItem({
+    ...createRecord("menu"),
+    ...payload
+  });
+  await storage.addMenuItem(item);
+
+  return sendJson(res, 201, { ok: true, message: "Menu item added.", item });
+}
+
+async function getHealth(req, res) {
+  const ready = await storage.health();
+  if (!ready) {
+    return sendJson(res, 503, { ok: false, message: "Storage is unavailable.", storage: storage.name });
+  }
+
+  return sendJson(res, 200, { ok: true, message: "Server is running.", storage: storage.name });
+}
+
+async function testEmail(req, res) {
+  if (!allowAdminRequest(req, res)) {
+    return;
+  }
+
+  const result = await sendEmail(
+    "Test Email - Hotel Govind Kripa",
+    ["This is a test email from the Hotel Govind Kripa website.", "", `Sent at: ${new Date().toISOString()}`].join("\n")
+  );
+
+  if (!result.ok) {
+    return sendJson(res, 500, { ok: false, message: `Email test failed: ${result.message || result.reason}` });
+  }
+
+  return sendJson(res, 200, { ok: true, message: `Test email sent to ${hotelEmail}.` });
+}
+
+function getDynamicRouteHandler(method, route) {
+  const bookingMatch = route.match(/^\/api\/bookings\/([^/]+)$/);
+  if (method === "DELETE" && bookingMatch) {
+    return (req, res) => deleteAdminRecord(req, res, bookingMatch[1], storage.deleteBooking, "Booking");
+  }
+
+  const inquiryMatch = route.match(/^\/api\/inquiries\/([^/]+)$/);
+  if (method === "DELETE" && inquiryMatch) {
+    return (req, res) => deleteAdminRecord(req, res, inquiryMatch[1], storage.deleteInquiry, "Inquiry");
+  }
+
+  const menuItemMatch = route.match(/^\/api\/menu-items\/([^/]+)$/);
+  if (menuItemMatch && ["PUT", "DELETE"].includes(method)) {
+    return (req, res) => updateOrDeleteMenuItem(req, res, menuItemMatch[1], method);
+  }
+
+  return null;
+}
+
+async function deleteAdminRecord(req, res, encodedId, deleteRecord, label) {
+  if (!allowAdminRequest(req, res)) {
+    return;
+  }
+
+  const deleted = await deleteRecord(decodeURIComponent(encodedId));
+  if (!deleted) {
+    return sendJson(res, 404, { ok: false, message: `${label} not found.` });
+  }
+
+  return sendJson(res, 200, { ok: true, message: `${label} deleted.` });
+}
+
+async function updateOrDeleteMenuItem(req, res, encodedId, method) {
+  if (!allowAdminRequest(req, res)) {
+    return;
+  }
+
+  const itemId = decodeURIComponent(encodedId);
+  const existingItem = await storage.getMenuItem(itemId);
+  if (!existingItem) {
+    return sendJson(res, 404, { ok: false, message: "Menu item not found." });
+  }
+
+  if (method === "DELETE") {
+    await storage.deleteMenuItem(itemId);
+    return sendJson(res, 200, { ok: true, message: "Menu item deleted." });
+  }
+
+  const payload = await readJsonBody(req);
+  const validation = validateMenuItem(payload);
+  if (!validation.valid) {
+    return sendJson(res, 400, { ok: false, message: validation.message });
+  }
+
+  const item = normalizeMenuItem({ ...existingItem, ...payload, updatedAt: new Date().toISOString() });
+  await storage.updateMenuItem(itemId, item);
+
+  return sendJson(res, 200, { ok: true, message: "Menu item updated.", item });
+}
+
+function allowPublicSubmission(req, res) {
+  if (consumeRateLimit(req, "public-form", 10, 15 * 60 * 1000)) {
+    return true;
+  }
+
+  sendJson(res, 429, { ok: false, message: "Too many requests. Please try again later." });
+  return false;
+}
+
+function allowAdminRequest(req, res) {
+  if (!consumeRateLimit(req, "admin", 120, 15 * 60 * 1000)) {
+    sendJson(res, 429, { ok: false, message: "Too many requests. Please try again later." });
+    return false;
+  }
+
+  if (!isAdminSession(req)) {
+    sendJson(res, 401, { ok: false, message: "Unauthorized." });
+    return false;
+  }
+
+  return true;
+}
+
+function createRecord(prefix, fields = {}) {
+  return {
+    id: createId(prefix),
+    createdAt: new Date().toISOString(),
+    status: "new",
+    ...fields
+  };
+}
 
 if (require.main === module) {
   const server = http.createServer(requestHandler);
@@ -315,7 +337,11 @@ if (require.main === module) {
 }
 
 module.exports = requestHandler;
+module.exports.validateBooking = validateBooking;
+module.exports.validateInquiry = validateInquiry;
+module.exports.validateMenuItem = validateMenuItem;
 
+// Storage
 function ensureDataStore() {
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
@@ -363,6 +389,10 @@ function createMongoStorage() {
           db.collection("menuItems").createIndex({ id: 1 }, { unique: true })
         ]);
         return db;
+      }).catch(async (error) => {
+        clientPromise = null;
+        await client.close().catch(() => {});
+        throw error;
       });
     }
 
@@ -380,6 +410,15 @@ function createMongoStorage() {
   return {
     isMongo: true,
     name: "mongodb",
+    health: async () => {
+      try {
+        const db = await getDb();
+        await db.command({ ping: 1 });
+        return true;
+      } catch (error) {
+        return false;
+      }
+    },
     addBooking: async (record) => {
       const db = await getDb();
       await db.collection("bookings").insertOne(record);
@@ -424,6 +463,7 @@ function createFileStorage() {
   return {
     isMongo: false,
     name: "local-json",
+    health: async () => true,
     addBooking: async (record) => appendRecord(files.bookings, record),
     addInquiry: async (record) => appendRecord(files.inquiries, record),
     listBookings: async () => readRecords(files.bookings).slice().reverse(),
@@ -474,6 +514,7 @@ function loadEnvFile() {
   });
 }
 
+// HTTP and security
 function parseAllowedOrigins(value) {
   return value
     .split(",")
@@ -518,7 +559,7 @@ function applyCors(req, res) {
   const origin = req.headers.origin;
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-admin-key");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-admin-token");
 
   if (!origin) {
     return true;
@@ -570,6 +611,7 @@ function readJsonBody(req) {
   });
 }
 
+// Validation and normalization
 function validateBooking(payload) {
   const requiredFields = ["name", "phone", "checkin", "checkout", "guests", "roomType"];
   const missingField = requiredFields.find((field) => !String(payload[field] || "").trim());
@@ -713,13 +755,24 @@ function normalizeMenuItem(item) {
   };
 }
 
-function isAdminRequest(req) {
-  const providedKey = String(req.headers["x-admin-key"] || "");
+function isValidAdminKey(value) {
+  const providedKey = String(value || "");
   if (!adminKey || !providedKey || providedKey.length !== adminKey.length) {
     return false;
   }
 
   return crypto.timingSafeEqual(Buffer.from(providedKey), Buffer.from(adminKey));
+}
+
+function isAdminSession(req) {
+  const token = String(req.headers["x-admin-token"] || "");
+  const expiresAt = adminSessions.get(token);
+  if (!expiresAt || expiresAt <= Date.now()) {
+    adminSessions.delete(token);
+    return false;
+  }
+
+  return true;
 }
 
 function cleanText(value) {
@@ -746,6 +799,8 @@ function isValidDateString(value) {
 }
 
 function consumeRateLimit(req, bucket, limit, windowMs) {
+  removeExpiredEntries(rateLimitStore);
+  removeExpiredEntries(adminSessions);
   const key = `${bucket}:${getClientIp(req)}`;
   const now = Date.now();
   const current = rateLimitStore.get(key);
@@ -757,6 +812,16 @@ function consumeRateLimit(req, bucket, limit, windowMs) {
 
   current.count += 1;
   return current.count <= limit;
+}
+
+function removeExpiredEntries(store) {
+  const now = Date.now();
+  store.forEach((value, key) => {
+    const expiresAt = typeof value === "number" ? value : value.expiresAt;
+    if (expiresAt <= now) {
+      store.delete(key);
+    }
+  });
 }
 
 function getClientIp(req) {
@@ -836,6 +901,7 @@ async function sendInquiryEmail(record) {
   return sendEmail(subject, text, record.email);
 }
 
+// Notifications
 function queueEmailDelivery(label, task) {
   // Saving a customer request must not wait for an external email provider.
   setImmediate(() => {
@@ -897,6 +963,7 @@ function getTodayDateString() {
   return `${year}-${month}-${day}`;
 }
 
+// File storage helpers
 function appendRecord(filePath, record) {
   const items = readRecords(filePath);
   items.push(record);

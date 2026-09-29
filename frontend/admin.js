@@ -1,8 +1,9 @@
-const ADMIN_STORAGE_KEY = "hotel-admin-key";
+const ADMIN_STORAGE_KEY = "hotel-admin-session";
 const API_BASE = String(window.HOTEL_API_BASE || "").replace(/\/+$/, "");
 
+// Dashboard setup and access
 document.addEventListener("DOMContentLoaded", () => {
-  const savedKey = sessionStorage.getItem(ADMIN_STORAGE_KEY);
+  const savedSession = sessionStorage.getItem(ADMIN_STORAGE_KEY);
   document.getElementById("admin-key-form").addEventListener("submit", handleAdminLogin);
   document.getElementById("menu-form").addEventListener("submit", handleMenuSubmit);
   document.getElementById("menu-cancel-btn").addEventListener("click", resetMenuForm);
@@ -11,9 +12,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("booking-list").addEventListener("click", handleBookingListClick);
   document.getElementById("inquiry-list").addEventListener("click", handleInquiryListClick);
 
-  if (savedKey) {
-    document.getElementById("admin-key").value = savedKey;
-    openDashboard(savedKey);
+  if (savedSession) {
+    openDashboard(savedSession);
   }
 });
 
@@ -25,19 +25,28 @@ async function handleAdminLogin(event) {
     return;
   }
 
-  await openDashboard(key);
+  setStatus("admin-status", "Checking access...");
+  try {
+    const session = await fetchJson("/api/admin/login", {
+      method: "POST",
+      body: JSON.stringify({ key })
+    });
+    sessionStorage.setItem(ADMIN_STORAGE_KEY, session.token);
+    document.getElementById("admin-key").value = "";
+    await openDashboard(session.token);
+  } catch (error) {
+    setStatus("admin-status", error.message || "Could not open dashboard.");
+  }
 }
 
 async function openDashboard(key) {
-  setStatus("admin-status", "Checking access...");
-
   try {
     await fetchAdminJson("/api/bookings", key);
-    sessionStorage.setItem(ADMIN_STORAGE_KEY, key);
     document.getElementById("login-section").hidden = true;
     document.getElementById("dashboard-section").hidden = false;
     await refreshDashboard();
   } catch (error) {
+    sessionStorage.removeItem(ADMIN_STORAGE_KEY);
     setStatus("admin-status", error.message || "Could not open dashboard.");
   }
 }
@@ -69,6 +78,7 @@ async function handleTestEmail() {
   }
 }
 
+// Menu management
 async function handleMenuSubmit(event) {
   event.preventDefault();
 
@@ -150,6 +160,7 @@ async function handleInquiryListClick(event) {
   await refreshDashboard();
 }
 
+// Dashboard rendering
 function startMenuEdit(item) {
   document.getElementById("menu-id").value = item.editMenuId;
   document.getElementById("menu-name").value = item.name;
@@ -239,6 +250,7 @@ function renderInquiries(inquiries) {
   `).join("");
 }
 
+// API and display helpers
 async function fetchJson(route, options = {}) {
   const response = await fetch(`${API_BASE}${route}`, {
     ...options,
@@ -260,7 +272,7 @@ function fetchAdminJson(route, key, options = {}) {
   return fetchJson(route, {
     ...options,
     headers: {
-      "x-admin-key": key,
+      "x-admin-token": key,
       ...(options.headers || {})
     }
   });
