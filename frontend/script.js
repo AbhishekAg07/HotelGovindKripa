@@ -95,6 +95,10 @@ function bindPageActions() {
     button.addEventListener("click", () => selectRoomAndScroll(button.dataset.bookRoom));
   });
 
+  document.querySelectorAll("[data-ga-event]").forEach((element) => {
+    element.addEventListener("click", () => trackGaEvent(element.dataset.gaEvent));
+  });
+
   document.getElementById("booking-form").addEventListener("submit", submitBooking);
   document.getElementById("inquiry-form").addEventListener("submit", submitInquiry);
 }
@@ -198,6 +202,7 @@ async function submitBooking(event) {
 
     document.getElementById("booking-form").reset();
     status.textContent = result.message;
+    trackGaEvent("booking_request_submitted");
   } catch (error) {
     status.textContent = error.message || "Could not send booking right now. Please try again.";
   }
@@ -229,6 +234,7 @@ async function submitInquiry(event) {
 
     document.querySelector(".contact-form").reset();
     status.textContent = result.message;
+    trackGaEvent("inquiry_submitted");
   } catch (error) {
     status.textContent = error.message || "Could not send inquiry right now. Please try again.";
   }
@@ -263,6 +269,12 @@ async function postFormData(route, payload) {
 
 function isNetworkFailure(error) {
   return error instanceof TypeError || /fetch/i.test(String(error.message || ""));
+}
+
+function trackGaEvent(eventName) {
+  if (typeof window.gtag === "function") {
+    window.gtag("event", eventName);
+  }
 }
 
 // Browser-side validation

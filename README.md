@@ -142,6 +142,22 @@ https://your-render-backend.onrender.com/api/health
 
 After Vercel gives you the live frontend URL, add that exact URL to the backend `ALLOWED_ORIGINS` environment variable in Render, then redeploy the backend.
 
+## Website Analytics
+
+Vercel Web Analytics is enabled for the public website. The tracking script in `frontend/index.html` records production page visits without changing the backend.
+
+After pushing these changes, wait for the Vercel deployment to finish, then:
+
+1. Open the live website once in a normal browser window.
+2. In Vercel, select the frontend project and open **Analytics** in the left sidebar.
+3. Review visitors, page views, top pages, referrers, locations, and device/browser data. Data can take a little time to appear.
+
+Traffic source labels explain how visitors found the website. For example, `google.com` means Google Search, a social-media domain means a social link, and `Direct` means Vercel could not identify a referring site, such as a typed URL, bookmark, or privacy-restricted app link.
+
+Google Analytics 4 is also configured for page views and the following privacy-safe events: `booking_request_submitted`, `inquiry_submitted`, `phone_click`, `email_click`, `whatsapp_click`, `zomato_click`, and `maps_click`. No booking form fields or customer contact details are sent to Google Analytics.
+
+To access GA4 reports, open [Google Analytics](https://analytics.google.com/), select the Hotel Govind Kripa property, then use **Reports** for traffic and **Reports > Engagement > Events** for actions. Mark `booking_request_submitted` and `inquiry_submitted` as key events in **Admin > Events** after they appear in the events list. Realtime data can take a few minutes; standard reports can take up to 24-48 hours.
+
 ## Architecture
 
 ```text
